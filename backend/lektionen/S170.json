@@ -1,0 +1,77 @@
+{
+  "name": "S170",
+  "vokabeln": [
+    {
+      "de": "Hallo",
+      "en": "Hello"
+    },
+    {
+      "de": "Ich heiße ...",
+      "en": "My name is ..."
+    },
+    {
+      "de": "sein",
+      "en": "to be"
+    },
+    {
+      "de": "Wie heißt du?",
+      "en": "What's your name?"
+    },
+    {
+      "de": "Hi Hallo",
+      "en": "Hi"
+    },
+    {
+      "de": "Ich bin ...",
+      "en": "I'm ..."
+    },
+    {
+      "de": "Woher kommst du/ihr",
+      "en": "Where are you from?"
+    },
+    {
+      "de": "Ich bin aus ...",
+      "en": "I'm from ..."
+    },
+    {
+      "de": "aber",
+      "en": "but"
+    },
+    {
+      "de": "Ich wohne in ...",
+      "en": "I live in ..."
+    },
+    {
+      "de": "wohnen, leben",
+      "en": "to live"
+    },
+    {
+      "de": "Wie alt bist du?",
+      "en": "How old are you?"
+    },
+    {
+      "de": "Ich auch.",
+      "en": "Me too."
+    },
+    {
+      "de": "Bis dann!",
+      "en": "See you!"
+    },
+    {
+      "de": "sehen",
+      "en": "to see"
+    },
+    {
+      "de": "Tschüss!",
+      "en": "Bye!"
+    },
+    {
+      "de": "neu",
+      "en": "new"
+    },
+    {
+      "de": "Freund/-in",
+      "en": "friend"
+    }
+  ]
+}
