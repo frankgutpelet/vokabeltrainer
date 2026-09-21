@@ -18,6 +18,14 @@ Dann im Browser öffnen: http://localhost:8000/
 ## Funktionen
 - Lektion anlegen (Name + beliebig viele Deutsch/Englisch-Vokabelpaare), gespeichert als
   `backend/lektionen/<Name>.json`
+- **Vokabeln per Foto scannen**: Button „📷 Vokabeln scannen“ öffnet auf dem Handy direkt die
+  Kamera, erkennt den Text im Bild (Tesseract.js, läuft im Browser, benötigt beim Scannen
+  einmalig Internetzugang zum Nachladen der Bibliothek von cdnjs.cloudflare.com) und ordnet
+  jede erkannte Zeile automatisch Deutsch/Englisch zu (anhand Umlauten/ß und häufigen
+  Signalwörtern). Ergebnis wird vor dem Übernehmen angezeigt und kann korrigiert werden.
+  Funktioniert am besten bei klar getrennten Spalten (Tabulator, mehrere Leerzeichen oder
+  Gedankenstrich zwischen den Wörtern).
+- Reihenfolge der Eingabefelder umschaltbar (Deutsch zuerst / Englisch zuerst)
 - Lektion öffnen, Vokabeln nachträglich bearbeiten oder löschen
 - **Abfragen**: Richtung wählbar (Deutsch→Englisch oder Englisch→Deutsch). Falsch beantwortete
   Vokabeln werden sofort mit der richtigen Lösung angezeigt und am Ende der Runde erneut

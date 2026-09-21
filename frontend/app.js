@@ -67,6 +67,92 @@ function shuffle(arr) {
   return a;
 }
 
+// ---------------------------------------------------------------------
+// Foto-Scan: Text erkennen (Tesseract.js) und Deutsch/Englisch zuordnen
+// ---------------------------------------------------------------------
+let tesseractLadenPromise = null;
+function ladeTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (tesseractLadenPromise) return tesseractLadenPromise;
+  tesseractLadenPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Texterkennung konnte nicht geladen werden (keine Internetverbindung?)."));
+    document.head.appendChild(script);
+  });
+  return tesseractLadenPromise;
+}
+
+const DEUTSCH_WOERTER = new Set([
+  "der", "die", "das", "den", "dem", "des", "ein", "eine", "einen", "einem", "einer",
+  "und", "ist", "nicht", "ich", "du", "er", "sie", "es", "wir", "ihr", "mit", "für",
+  "auf", "im", "in", "zu", "kein", "keine", "sein", "haben", "werden", "sehr", "auch",
+  "sich", "von", "aus", "bei", "nach", "über", "unter", "durch", "als", "wie", "wenn",
+  "man", "was", "wo", "wer", "zum", "zur",
+]);
+const ENGLISCH_WOERTER = new Set([
+  "the", "and", "is", "you", "this", "that", "with", "for", "have", "has", "are",
+  "was", "were", "a", "an", "to", "of", "in", "on", "at", "it", "he", "she", "we",
+  "they", "not", "be", "will", "would", "can", "could", "do", "does", "his", "her",
+  "their", "or", "but", "so", "if", "what", "who", "where",
+]);
+
+function deutschWahrscheinlichkeit(text) {
+  const t = text.toLowerCase();
+  let score = 0;
+  const umlaute = (t.match(/[äöüß]/g) || []).length;
+  score += umlaute * 3;
+  const woerter = t.split(/\s+/).filter(Boolean);
+  for (const w of woerter) {
+    const bereinigt = w.replace(/[^a-zäöüß]/g, "");
+    if (DEUTSCH_WOERTER.has(bereinigt)) score += 3;
+    if (ENGLISCH_WOERTER.has(bereinigt)) score -= 3;
+  }
+  return score;
+}
+
+// Ordnet zwei erkannte Textteile automatisch Deutsch/Englisch zu.
+// Bei Gleichstand wird die übliche Konvention (Deutsch zuerst) als Fallback genutzt.
+function ordneDeEnZu(teilA, teilB) {
+  const scoreA = deutschWahrscheinlichkeit(teilA);
+  const scoreB = deutschWahrscheinlichkeit(teilB);
+  if (scoreA === scoreB) return { de: teilA, en: teilB };
+  return scoreA > scoreB ? { de: teilA, en: teilB } : { de: teilB, en: teilA };
+}
+
+// Versucht eine erkannte Textzeile in zwei Vokabelteile zu splitten
+// (Tab, mehrere Leerzeichen, Gedankenstrich, Gleichheitszeichen, Doppelpunkt).
+function splitVokabelZeile(zeile) {
+  const bereinigt = zeile.trim();
+  if (!bereinigt) return null;
+  const trenner = /\t|\s{2,}|\s[-–—=]\s|\s:\s/;
+  const teile = bereinigt.split(trenner).map(t => t.trim()).filter(Boolean);
+  if (teile.length !== 2) return null;
+  return ordneDeEnZu(teile[0], teile[1]);
+}
+
+async function erkenneVokabelnAusBild(file, statusCallback) {
+  await ladeTesseract();
+  const { data } = await window.Tesseract.recognize(file, "eng+deu", {
+    logger: (m) => {
+      if (m.status && typeof m.progress === "number") {
+        statusCallback(`${m.status} … ${Math.round(m.progress * 100)}%`);
+      }
+    },
+  });
+  const zeilen = data.text.split("\n");
+  const erkannt = [];
+  let uebersprungen = 0;
+  for (const zeile of zeilen) {
+    if (!zeile.trim()) continue;
+    const paar = splitVokabelZeile(zeile);
+    if (paar) erkannt.push(paar);
+    else uebersprungen++;
+  }
+  return { erkannt, uebersprungen };
+}
+
 function setNav(buttons) {
   nav.innerHTML = "";
   for (const b of buttons) nav.appendChild(b);
@@ -218,7 +304,79 @@ function zeigeLektionErstellen(bestehendeLektion = null) {
     class: "secondary",
     onclick: () => neueZeileAnhaengen(),
   }, "+ Vokabel hinzufügen");
-  card.appendChild(el("div", { class: "row" }, [hinzufuegenBtn]));
+
+  const scanBtn = el("button", {
+    class: "secondary",
+    onclick: () => fileInput.click(),
+  }, "📷 Vokabeln scannen");
+  const fileInput = el("input", { type: "file", accept: "image/*", capture: "environment" });
+  fileInput.style.display = "none";
+
+  const scanStatus = el("div", { class: "hinweis" }, "");
+  const scanErgebnisBereich = el("div");
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    fileInput.value = ""; // damit dasselbe Bild erneut ausgewählt werden kann
+    if (!file) return;
+    scanErgebnisBereich.innerHTML = "";
+    scanStatus.textContent = "Bild wird verarbeitet …";
+    try {
+      const { erkannt, uebersprungen } = await erkenneVokabelnAusBild(file, (msg) => { scanStatus.textContent = msg; });
+      scanStatus.textContent = "";
+      zeigeScanErgebnis(erkannt, uebersprungen);
+    } catch (err) {
+      scanStatus.textContent = "";
+      alert("Texterkennung fehlgeschlagen: " + err.message);
+    }
+  });
+
+  function zeigeScanErgebnis(erkannt, uebersprungen) {
+    scanErgebnisBereich.innerHTML = "";
+    if (erkannt.length === 0) {
+      scanErgebnisBereich.appendChild(el("p", { class: "hinweis" },
+        "Keine Vokabelpaare erkannt. Am besten ein scharfes Foto mit klar getrennten Spalten (Tabulator, mehrere Leerzeichen oder Gedankenstrich zwischen den Wörtern) machen."));
+      return;
+    }
+
+    const zeilenState = erkannt.map(p => ({ ...p, uebernehmen: true }));
+    const ergebnisCard = el("div", { class: "card" });
+    ergebnisCard.appendChild(el("h3", {},
+      `Erkannte Vokabeln (${erkannt.length})` +
+      (uebersprungen > 0 ? ` — ${uebersprungen} Zeile(n) nicht eindeutig erkannt, übersprungen` : "")));
+    ergebnisCard.appendChild(el("p", { class: "hinweis" },
+      "Sprache wurde automatisch zugeordnet, bitte vor dem Übernehmen kurz prüfen und ggf. korrigieren."));
+
+    zeilenState.forEach((p) => {
+      const checkbox = el("input", { type: "checkbox" });
+      checkbox.checked = true;
+      checkbox.addEventListener("change", () => (p.uebernehmen = checkbox.checked));
+      const deInput = el("input", { type: "text", placeholder: "Deutsch", value: p.de });
+      const enInput = el("input", { type: "text", placeholder: "Englisch", value: p.en });
+      deInput.addEventListener("input", () => (p.de = deInput.value));
+      enInput.addEventListener("input", () => (p.en = enInput.value));
+      ergebnisCard.appendChild(el("div", { class: "row" }, [checkbox, deInput, enInput]));
+    });
+
+    const uebernehmenBtn = el("button", {
+      onclick: () => {
+        const ausgewaehlt = zeilenState.filter(p => p.uebernehmen && p.de.trim() && p.en.trim());
+        if (ausgewaehlt.length === 0) return alert("Keine Vokabeln zum Übernehmen ausgewählt.");
+        // leere Platzhalterzeile entfernen, bevor die gescannten Vokabeln angehängt werden
+        if (vokabeln.length === 1 && !vokabeln[0].de.trim() && !vokabeln[0].en.trim()) vokabeln.length = 0;
+        for (const p of ausgewaehlt) vokabeln.push({ de: p.de.trim(), en: p.en.trim() });
+        scanErgebnisBereich.innerHTML = "";
+        renderVokabelListe();
+      },
+    }, "Ausgewählte übernehmen");
+    const verwerfenBtn = el("button", { class: "secondary", onclick: () => { scanErgebnisBereich.innerHTML = ""; } }, "Verwerfen");
+    ergebnisCard.appendChild(el("div", { class: "row" }, [uebernehmenBtn, verwerfenBtn]));
+    scanErgebnisBereich.appendChild(ergebnisCard);
+  }
+
+  card.appendChild(el("div", { class: "row" }, [hinzufuegenBtn, scanBtn, fileInput]));
+  card.appendChild(scanStatus);
+  card.appendChild(scanErgebnisBereich);
 
   const speichernBtn = el("button", {
     onclick: async () => {
