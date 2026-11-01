@@ -129,6 +129,7 @@ Nach jeder Auswertung (richtig/falsch) wird die korrekte Antwort per Browser-Spr
 Taste R (bei fokussiertem „Weiter“) lässt sie sich wiederholen. Die Qualität hängt von den im
 Gerät installierten Stimmen ab.
 
+- **Diktat wiederholen**: Im Diktat liest der Button „Wiederholen“ (oder Taste R) das aktuelle Wort nochmal vor; der Abstand bis zum nächsten Wort beginnt danach neu.
 - **Diktat-Kontrollliste**: Am Ende eines Diktats (Lektion oder Gruppe) erscheint automatisch die Liste
   der diktierten Wörter in Diktat-Reihenfolge mit englischer Übersetzung (bei mehreren deutschen
   Varianten alle, mit " / " getrennt), zum Abgleichen von Hand; per Button kopierbar.

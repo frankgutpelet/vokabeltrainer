@@ -1272,8 +1272,9 @@ async function starteDiktat(lektion, zurueck = null) {
   box.appendChild(el("p", { class: "hinweis" }, `Abstand zwischen den Wörtern: ${sekundenProVokabel} s (Admin-Einstellung, wie beim Test-Zeitlimit)`));
 
   const pauseBtn = el("button", { class: "secondary", onclick: () => pauseUmschalten() }, "Pause");
+  const wiederholenBtn = el("button", { class: "secondary", onclick: () => wortWiederholen() }, "🔊 Wiederholen (R)");
   const beendenBtn = el("button", { class: "secondary", onclick: () => { if (timeoutId) clearTimeout(timeoutId); zurueck(); } }, "Beenden");
-  box.appendChild(el("div", { class: "row" }, [pauseBtn, beendenBtn]));
+  box.appendChild(el("div", { class: "row" }, [wiederholenBtn, pauseBtn, beendenBtn]));
   content.appendChild(box);
 
   function pauseUmschalten() {
@@ -1286,6 +1287,24 @@ async function starteDiktat(lektion, zurueck = null) {
       naechstesWort();
     }
   }
+
+  // Aktuelles Wort nochmals vorlesen; der Abstand bis zum nächsten Wort beginnt danach neu
+  function wortWiederholen() {
+    if (index < 1 || index > woerter.length) return;
+    sprich(woerter[index - 1], "de");
+    if (!pausiert && timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(naechstesWort, abstandMs);
+    }
+  }
+  const tasteHandler = (e) => {
+    if ((e.key === "r" || e.key === "R") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (!document.body.contains(wiederholenBtn)) { document.removeEventListener("keydown", tasteHandler); return; }
+      e.preventDefault();
+      wortWiederholen();
+    }
+  };
+  document.addEventListener("keydown", tasteHandler);
 
   function naechstesWort() {
     if (index >= woerter.length) {
